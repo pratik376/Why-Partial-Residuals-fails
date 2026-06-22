@@ -1,0 +1,5 @@
+config,n_seeds,mean_best_val_loss,std_best_val_loss,scale,implementation
+Full Residual,1,1.5017,,10M,ResidualGPT
+AttnOnly,3,1.5999,0.0149,10M,ResidualGPT
+FFNOnly,3,3.3493,0.0009,10M,ResidualGPT
+No Residual,1,3.3564,,10M,ResidualGPT

@@ -1,0 +1,5 @@
+scale,implementation,attnonly_best_val,ffnonly_best_val,attnonly_gap_vs_full_residual,asymmetry_ratio
+10M,nanoGPT,3.3534,3.3475,+127.3%,1.00x
+10M,ResidualGPT,1.5999,3.3493,+6.5%,2.09x
+124M,nanoGPT,7.4328,7.4299,+113.5%,1.00x
+124M,ResidualGPT,4.8994,7.6662,+50.1%,1.56x

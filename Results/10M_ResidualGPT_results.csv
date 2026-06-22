@@ -1,0 +1,9 @@
+config,seed,best_val_loss,scale,implementation,dataset
+Full Residual,1337,1.501662,10M,ResidualGPT,TinyShakespeare
+No Residual,1337,3.356385,10M,ResidualGPT,TinyShakespeare
+AttnOnly,1337,1.579989,10M,ResidualGPT,TinyShakespeare
+AttnOnly,42,1.604021,10M,ResidualGPT,TinyShakespeare
+AttnOnly,123,1.615744,10M,ResidualGPT,TinyShakespeare
+FFNOnly,1337,3.348086,10M,ResidualGPT,TinyShakespeare
+FFNOnly,42,3.349745,10M,ResidualGPT,TinyShakespeare
+FFNOnly,123,3.350168,10M,ResidualGPT,TinyShakespeare

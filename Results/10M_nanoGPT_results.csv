@@ -1,0 +1,5 @@
+config,best_val_loss,final_val_loss,seed,scale,implementation,dataset
+Full Residual,1.4751,1.4751,1337,10M,nanoGPT,TinyShakespeare
+AttnOnly,3.3534,3.3534,1337,10M,nanoGPT,TinyShakespeare
+FFNOnly,3.3475,3.3475,1337,10M,nanoGPT,TinyShakespeare
+No Residual,3.3523,3.3523,1337,10M,nanoGPT,TinyShakespeare

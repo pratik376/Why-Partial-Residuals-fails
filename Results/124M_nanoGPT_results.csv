@@ -1,0 +1,5 @@
+config,best_val_loss,final_val_loss,seed,scale,implementation,dataset
+Full Residual,3.4818,3.4988,1337,124M,nanoGPT,OpenWebText
+AttnOnly,7.4328,7.4328,1337,124M,nanoGPT,OpenWebText
+FFNOnly,7.4299,7.5974,1337,124M,nanoGPT,OpenWebText
+No Residual,7.5946,7.6009,1337,124M,nanoGPT,OpenWebText
