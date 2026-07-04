@@ -2,7 +2,7 @@
 
 **A Robust FFN-Skip Collapse, an Unresolved Attention-Skip Recovery Effect, and a Confound Caught Along the Way**
 
-**Pratik Patel** · Graduate Research Assistant, Arizona State University · Independent Research Project
+**Pratikkumar Babariya** · Graduate Research Assistant, Arizona State University · Independent Research Project
 
 ---
 
