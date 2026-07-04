@@ -1,20 +1,7 @@
-"""
-residualscope.compare
-======================
-
-Cross-configuration comparison utilities.
-
-The central use case this module is built for: you have run the SAME
-training procedure on N different model variants (e.g. Full Residual,
-AttnOnly, FFNOnly, No Residual) and you want to compare their diagnostic
-signatures side by side, the way the asymmetry between AttnOnly and
-FFNOnly was originally surfaced.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 
@@ -23,11 +10,9 @@ from .core import ScopeReport
 
 @dataclass
 class ComparisonResult:
-    """Holds named ScopeReports for side-by-side comparison."""
     reports: Dict[str, ScopeReport]
 
     def hidden_norm_growth_table(self, layer_name: str) -> Dict[str, Optional[float]]:
-        """Growth ratio for one layer, across every named configuration."""
         return {
             name: report.hidden_norm_growth_ratio(layer_name)
             for name, report in self.reports.items()
@@ -41,11 +26,7 @@ class ComparisonResult:
         return out
 
     def summary_table(self, layer_name: str) -> List[Dict[str, object]]:
-        """
-        One row per configuration with the key diagnostic numbers for a
-        single layer -- the table format used throughout the source
-        research papers (e.g. Table 3/5 in "Why Partial Residuals Fail").
-        """
+        """One row per config — same structure as Tables 3/5 in the paper."""
         rows = []
         for name, report in self.reports.items():
             traj = report.grad_norm_trajectory(layer_name)
@@ -59,7 +40,6 @@ class ComparisonResult:
 
 
 def compare(named_reports: Dict[str, ScopeReport]) -> ComparisonResult:
-    """Build a ComparisonResult from a dict of {config_name: ScopeReport}."""
     return ComparisonResult(reports=named_reports)
 
 
@@ -71,17 +51,6 @@ def plot_comparison_bar(
     title: Optional[str] = None,
     colors: Optional[Dict[str, str]] = None,
 ):
-    """
-    Bar chart comparing one metric across all configurations for one
-    layer. This is the chart shape that revealed the FFNOnly/AttnOnly
-    asymmetry: same metric, same layer, different residual config.
-
-    Parameters
-    ----------
-    metric : str
-        One of "hidden_norm_growth_ratio", "final_grad_norm",
-        "dead_neuron_frac_final".
-    """
     own_fig = ax is None
     if own_fig:
         fig, ax = plt.subplots(figsize=(8, 5))
@@ -98,18 +67,19 @@ def plot_comparison_bar(
 
     plot_values = [v if v is not None else 0 for v in values]
     bars = ax.bar(range(len(names)), plot_values, color=bar_colors, width=0.6,
-                   edgecolor="white", zorder=3)
+                  edgecolor="white", zorder=3)
     for bar, v in zip(bars, values):
         if v is not None:
-            ax.text(bar.get_x() + bar.get_width() / 2,
-                     bar.get_height() + max(plot_values) * 0.02,
-                     f"{v:.3f}", ha="center", fontsize=9, fontweight="bold")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + max(plot_values) * 0.02,
+                f"{v:.3f}", ha="center", fontsize=9, fontweight="bold"
+            )
 
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels(names, fontsize=10)
     ax.set_ylabel(metric.replace("_", " "))
-    ax.set_title(title or f"{metric.replace('_', ' ')} \u2014 layer: {layer_name}",
-                 fontweight="bold")
+    ax.set_title(title or f"{metric.replace('_', ' ')} — layer: {layer_name}", fontweight="bold")
     ax.grid(True, axis="y", alpha=0.3, zorder=0)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)

@@ -1,30 +1,22 @@
 """
-ResidualScope
-=============
+ResidualScope — diagnostic hooks for transformer residual pathway analysis.
 
-A model-agnostic diagnostic tool for transformer internals — gradient
-norm tracking, hidden-state representation drift, dead-neuron detection,
-and cross-configuration comparison.
+Extracted from the experimental code for "A Reproducibility Study of Partial
+Residual Ablations" (Patel, 2026). Tracks gradient norms, hidden-state drift,
+and dead-neuron fractions via forward/backward hooks on any nn.Module.
 
-Extracted and generalized from the diagnostic code used in the paper
-"Why Partial Residuals Fail: Asymmetric Pathway Necessity in Transformer
-Language Models," where these exact diagnostics were used to discover
-and explain a 2.13x-to-2.36x asymmetry between attention-only and
-FFN-only residual configurations.
+    from residualscope import ResidualScope
 
-Quick start
------------
->>> from residualscope import ResidualScope
->>> scope = ResidualScope(model)
->>> for step in range(n_steps):
-...     loss = model(x, y)[1]
-...     loss.backward()
-...     scope.step(step)
-...     optimizer.step()
-...     optimizer.zero_grad()
->>> report = scope.report()
->>> report.hidden_norm_growth_ratio("blocks.3.mlp.down")
-14.03
+    scope = ResidualScope(model)
+    for step in range(n_steps):
+        loss = model(x, y)[1]
+        loss.backward()
+        scope.step(step)
+        optimizer.step()
+        optimizer.zero_grad()
+
+    report = scope.report()
+    report.hidden_norm_growth_ratio("blocks.3.mlp.fc1")  # -> 14.03 for AttnOnly
 """
 
 from .core import LayerSnapshot, ResidualScope, ScopeReport, quick_scan
