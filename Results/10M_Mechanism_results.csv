@@ -1,0 +1,29 @@
+experiment,condition,window_k,accessible_context,seed,best_val_loss,best_step,final_val_loss,evidence_status,source
+Experiment_1_LocalMixer,LocalMixerOnly,,no cross-position communication,1337,2.490946665,2900,2.493231583,3-seed replicated,LocalMixerOnly_seed1337.json
+Experiment_1_LocalMixer,LocalMixerOnly,,no cross-position communication,42,2.490253863,1000,2.493880520,3-seed replicated,LocalMixerOnly_seed42.json
+Experiment_1_LocalMixer,LocalMixerOnly,,no cross-position communication,123,2.490378985,1300,2.494927411,3-seed replicated,LocalMixerOnly_seed123.json
+Experiment_2_DiagonalSelfOnly,DiagonalOnly,0,self only,1337,2.490095181,2900,2.4929,3-seed replicated,Experiment_2.ipynb
+Experiment_2_DiagonalSelfOnly,DiagonalOnly,0,self only,42,2.490724497,1000,2.4947,3-seed replicated,Experiment_2.ipynb
+Experiment_2_DiagonalSelfOnly,DiagonalOnly,0,self only,123,2.491775713,1300,2.4960,3-seed replicated,Experiment_2.ipynb
+Experiment_3_CommunicationRadius,Window1,1,self + 1 previous,1337,1.562058,,,3-seed replicated,Experiment_3.ipynb reference/result table
+Experiment_3_CommunicationRadius,Window1,1,self + 1 previous,42,1.571663,2900,1.572749,3-seed replicated,Experiment_3.ipynb
+Experiment_3_CommunicationRadius,Window1,1,self + 1 previous,123,1.575357,3000,1.575357,3-seed replicated,Experiment_3.ipynb
+Experiment_4_ShortWindowSweep,Window2,2,self + 2 previous,1337,1.535775,,,single-seed exploratory,Experiment_4.ipynb
+Experiment_4_ShortWindowSweep,Window3,3,self + 3 previous,1337,1.527295,,,3-seed replicated,Experiment_4.ipynb reference/result table
+Experiment_4_ShortWindowSweep,Window3,3,self + 3 previous,42,1.527308,2900,1.528541,3-seed replicated,Experiment_4.ipynb
+Experiment_4_ShortWindowSweep,Window3,3,self + 3 previous,123,1.517451,3000,1.517451,3-seed replicated,Experiment_4.ipynb
+Experiment_3_CommunicationRadius,Window4,4,self + 4 previous,1337,1.518006,,,3-seed replicated,Experiment_3.ipynb reference/result table
+Experiment_3_CommunicationRadius,Window4,4,self + 4 previous,42,1.522560,2900,1.524925,3-seed replicated,Experiment_3.ipynb
+Experiment_3_CommunicationRadius,Window4,4,self + 4 previous,123,1.510614,2700,1.512430,3-seed replicated,Experiment_3.ipynb
+Experiment_4_ShortWindowSweep,Window6,6,self + 6 previous,1337,1.520973,,,3-seed replicated,Experiment_4.ipynb reference/result table
+Experiment_4_ShortWindowSweep,Window6,6,self + 6 previous,42,1.525632,2900,1.528897,3-seed replicated,Experiment_4.ipynb
+Experiment_4_ShortWindowSweep,Window6,6,self + 6 previous,123,1.520637,3000,1.520637,3-seed replicated,Experiment_4.ipynb
+Experiment_4_ShortWindowSweep,Window8,8,self + 8 previous,1337,1.521617,,,3-seed replicated,Experiment_4.ipynb reference/result table
+Experiment_4_ShortWindowSweep,Window8,8,self + 8 previous,42,1.539797,2900,1.541753,3-seed replicated,Experiment_4.ipynb
+Experiment_4_ShortWindowSweep,Window8,8,self + 8 previous,123,1.526760,3000,1.526760,3-seed replicated,Experiment_4.ipynb
+Experiment_3_CommunicationRadius,Window16,16,self + 16 previous,1337,1.537717,,,3-seed replicated,Experiment_3.ipynb reference/result table
+Experiment_3_CommunicationRadius,Window16,16,self + 16 previous,42,1.524254,2900,1.528740,3-seed replicated,Experiment_3.ipynb
+Experiment_3_CommunicationRadius,Window16,16,self + 16 previous,123,1.534447,3000,1.534447,3-seed replicated,Experiment_3.ipynb
+Experiment_3_CommunicationRadius,Window64,64,self + 64 previous,1337,1.561206,,,3-seed replicated,Experiment_3.ipynb reference/result table
+Experiment_3_CommunicationRadius,Window64,64,self + 64 previous,42,1.555237,2800,1.557114,3-seed replicated,Experiment_3.ipynb
+Experiment_3_CommunicationRadius,Window64,64,self + 64 previous,123,1.571378,3000,1.571378,3-seed replicated,Experiment_3.ipynb

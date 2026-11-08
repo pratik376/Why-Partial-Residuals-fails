@@ -1,225 +1,181 @@
-# A Reproducibility Study of Partial Residual Ablations
+# Partial Residual Ablations in Pre-LN Transformers
 
-**A Robust FFN-Skip Collapse, an Unresolved Attention-Skip Recovery Effect, and a Confound Caught Along the Way**
+**Controlled experiments at 10M and 124M parameters, with a 10M intervention study of cross-token communication.**
 
-**Pratikkumar Babariya** · Graduate Research Assistant, Arizona State University · Independent Research Project
+**Pratik Kumar Babariya** · Independent research
 
----
+[Paper on arXiv](https://arxiv.org/abs/2608.14689) · [Results](#controlled-results) · [Communication study](#how-much-communication-is-needed) · [Code and reproducibility](#code-and-reproducibility) · [Limitations](#limitations)
 
-## What this paper is about
+> **Main finding:** In the tested Pre-LN GPT-style models, retaining the attention skip while removing the FFN skip trains to substantially lower loss than the opposite ablation. Both remain worse than the full-residual baseline. In a separate 10M study, allowing one preceding token **per attention layer** produces a large improvement over self-only attention.
 
-The starting observation was simple: does a transformer still train if you remove only one of its two residual skip connections?
+This repository accompanies *A Reproducibility Study of Partial Residual Ablations in Pre-LN Transformers*. This README summarizes the revised manuscript, including its newer controlled sweeps and communication experiments. The public code release is partial; see the availability notes below before attempting to reproduce a table. The linked arXiv version may precede the latest manuscript revision.
 
-I first tested this in nanoGPT at 10M and 124M parameters. Both FFNOnly (attention skip removed) and AttnOnly (FFN skip removed) collapsed to the same floor as No Residual. That seemed like a clean result — both residual paths appear equally necessary.
+## Research question
 
-Then I rebuilt the experiment with fixed validation batches (ResidualGPT), which removes evaluation noise for slowly-learning models. The result changed. FFNOnly still collapsed. But AttnOnly no longer did — it converged to 1.600 ± 0.015 at 10M, clearly distinct from the No Residual floor of 3.356.
+What changes when a transformer loses one of its two residual skip connections? Does the answer depend on the implementation, and how does cross-token communication affect the resulting model?
 
-That asymmetry became the paper's central observation. When I tried to reproduce it on new hardware, the FFNOnly collapse reproduced perfectly. The AttnOnly recovery did not — three deterministic reproduction seeds gave 2.591 ± 0.544, with one seed reaching the collapse floor itself.
+The main ablations retain both attention and FFN sublayers. **“AttnOnly” and “FFNOnly” name the surviving skip connection, not the surviving sublayer.**
 
-**What is confirmed:** FFNOnly collapse is robust. Reproduces to four decimal places across every seed, every machine, and every CUDA determinism setting tested.
+| Configuration | Attention skip | FFN skip |
+|---|:---:|:---:|
+| FullResidual | Kept | Kept |
+| AttnOnly | Kept | Removed |
+| FFNOnly | Removed | Kept |
+| NoResidual | Removed | Removed |
 
-**What is not confirmed:** AttnOnly recovery. Originally recorded as 1.600 ± 0.015 at 10M and 4.899 at 124M (seed 1337). Subsequent reproduction under forced determinism gave 2.591 ± 0.544 at 10M. Two additional 124M seeds (7.586, 5.967) approached the collapse floor. The original software environment was not preserved, so the gap is unresolved.
+The study combines residual-path ablations, multi-seed comparisons, gradient and activation diagnostics, and interventions that restrict communication between token positions. Failed reproductions and implementation changes are retained as part of the experimental record.
 
----
+## Controlled results
 
-## Why nanoGPT and ResidualGPT gave different results
+**Metric:** best validation cross-entropy loss; lower is better. Multi-seed entries report mean ± **sample standard deviation**, not confidence intervals. Single-run anchors have no estimated seed uncertainty. These are manuscript-reported summaries; this README does not claim a fresh recomputation from every underlying run.
 
-nanoGPT samples fresh random validation batches at every checkpoint. For AttnOnly — which takes 200+ steps to break away from its initial plateau — this evaluation noise buries the slow improvement signal entirely. A model that improved from 3.35 to 3.30 between step 500 and 1000 will often look flat or regressing because the batch at step 1000 happened to be harder.
+### 10M · TinyShakespeare
 
-ResidualGPT fixes 50 validation batches at startup (seed 99991) and reuses them at every checkpoint across all four configs. AttnOnly's real learning signal becomes visible because variance is eliminated.
+![Controlled 10M results: AttnOnly reaches 1.580 while FFNOnly remains near 3.350.](Figures/figure5_10M_controlled_sweep.png)
 
-FFNOnly and NoResidual are unaffected by this difference — they sit at the floor regardless. Noise cannot bury improvement that does not exist.
+*Controlled Phase-3 sweep (paper Figure 5). Points show aggregate best-validation-loss statistics; error bars show sample SD where available. FullResidual and NoResidual are single-run anchors. Individual seed values are not reconstructed from aggregate statistics.*
 
----
+| Configuration | Best validation loss | Runs |
+|---|---:|---:|
+| FullResidual | 1.499 | 1, anchor |
+| AttnOnly | **1.580 ± 0.003** | **8** |
+| FFNOnly | 3.350 ± 0.002 | 3 |
+| NoResidual | 3.356 | 1, anchor |
 
-## Key numbers
+The AttnOnly–FFNOnly mean separation is **1.770 loss units**. The eight-seed count applies to AttnOnly, not every configuration.
 
-### nanoGPT — preliminary experiments
+### 124M · OpenWebText
 
-| Config | 10M val loss | 124M val loss |
+![Controlled 124M results: FullResidual 4.577, AttnOnly 6.037, FFNOnly 7.569, and NoResidual anchor 7.584.](Figures/figure7_124M_controlled_sweep.png)
+
+*Controlled matched-seed sweep (paper Figure 7). Error bars show sample SD; lighter bars show observed min–max ranges. FullResidual, AttnOnly, and FFNOnly use the same five seeds. NoResidual is a single-run anchor.*
+
+| Configuration | Best validation loss | Runs | Observed range |
+|---|---:|---:|---:|
+| FullResidual | **4.577 ± 0.012** | 5 | 4.560–4.592 |
+| AttnOnly | 6.037 ± 0.355 | 5 | 5.662–6.508 |
+| FFNOnly | 7.569 ± 0.001 | 5 | 7.568–7.570 |
+| NoResidual | 7.584 | 1, anchor | — |
+
+Matched seeds: `1337, 42, 123, 0, 7`. Every observed AttnOnly run has lower loss than every observed FFNOnly run; the closest observed pair is separated by **1.060 loss units**. AttnOnly nevertheless remains substantially worse than FullResidual and has greater observed seed variation.
+
+The NoResidual anchor stopped at step 18,000; its best logged loss occurred at step 2,000. It is not a five-seed, full-budget comparison.
+
+**Compare configurations within each sweep.** Different datasets, tokenizers, and documented environments make absolute 10M and 124M losses unsuitable for a direct scale comparison. Historical and controlled runs are not pooled.
+
+## How much communication is needed?
+
+The separate mechanism study holds the **AttnOnly residual topology** fixed and changes communication between token positions. A parameter-matched, position-wise LocalMixer supplies an additional no-communication control.
+
+For windowed attention, query position `t` may attend to `max(0, t − k) … t`:
+
+- `k = 0`: current token only.
+- `k = 1`: current token plus one preceding token **within each layer**.
+- Larger `k`: wider local causal attention.
+
+**The radius is per layer.** Across six stacked layers, information can travel farther than one token even when `k = 1`. The visibility sanity check tests one attention module, not the receptive field of the full network.
+
+![Communication-radius sweep: the largest loss improvement occurs between self-only attention and one preceding token per layer.](Figures/figure8_communication_radius.png)
+
+*Replicated 10M intervention (paper Figure 8). Points show means across seeds 1337, 42, and 123; error bars show sample SD. The right panel enlarges the nonzero-radius results. Radii occupy equally spaced categorical positions; connecting lines guide the eye.*
+
+| Intervention | Best validation loss | Runs |
+|---|---:|---:|
+| Position-wise LocalMixer | 2.490527 ± 0.000369 | 3 |
+| Self-only attention, `k = 0` | 2.490865 ± 0.000849 | 3 |
+| One preceding token per layer, `k = 1` | **1.569693 ± 0.006865** | 3 |
+| Lowest tested replicated mean, `k = 4` | **1.517060 ± 0.006029** | 3 |
+
+Moving from `k = 0` to `k = 1` improves mean loss by **0.921172**. Replicated radii `3, 4, 6, 8, 16, 64` remain in the lower-loss regime, with non-monotonic changes as the window grows.
+
+**Interpretation:** in this 10M setting, removing cross-position communication degrades performance, while a small local window recovers much of it. Global attention is unnecessary for this observed transition. The study does not establish that this benefit is unique to residual removal; matched radius sweeps under FullResidual and other residual configurations remain an important control.
+
+## Experimental setup
+
+| Setting | 10M experiments | 124M experiments |
 |---|---|---|
-| FullResidual | 1.475 | 3.493 |
-| AttnOnly | 3.353 | 7.433 |
-| FFNOnly | 3.348 | 7.430 |
-| NoResidual | 3.352 | 7.430 |
+| Architecture | 6-layer Pre-LN GPT-style transformer | 12-layer Pre-LN GPT-style transformer |
+| Embedding width / heads | 384 / 6 | 768 / 12 |
+| Dataset / tokenization | TinyShakespeare / characters | OpenWebText / BPE |
+| Context length | 256 | 1,024 |
+| Training budget | 3,000 steps | 20,000 steps, except interrupted anchor |
+| Evaluation | Fixed validation batches | Fixed validation batches |
 
-All three ablated configs collapse to the same floor. This motivated rebuilding with fixed validation batches.
+ResidualGPT uses tied embedding/output weights and PyTorch scaled dot-product attention. Validation batches are fixed using seed `99991`. See the manuscript for optimizer, initialization, learning-rate schedules, and environment details.
 
-![Figure 1: nanoGPT joint collapse at 10M and 124M](Figures/figure1_joint_collapse.png)
+## Code and reproducibility
 
----
+### Available entry points
 
-### ResidualGPT — primary experiments
+| Material | Location | Scope |
+|---|---|---|
+| 10M training and reproduction notebooks | [Notebooks/10M](Notebooks/10M/) | Earlier ResidualGPT, nanoGPT, seed-stability, and mixer investigations |
+| 124M notebooks | [Notebooks/124M](Notebooks/124M/) | Earlier training and additional-seed investigations |
+| Stored CSV results | [Results](Results/) | Historical result tables; not a complete archive of the revised sweeps |
+| Diagnostic package | [residualscope](residualscope/) | Gradient/activation diagnostics, comparison utilities, example, and tests |
+| Featured revised figures | [Figures](Figures/) | Controlled summaries and communication-radius results shown above |
 
-#### 10M originally recorded
+**Release status:** the revised manuscript reports experiments beyond the earlier notebook and CSV release. The new mechanism notebooks, complete individual-run histories for the controlled sweeps, and checkpoints are not all available in this repository. The figures summarize reported results; they do not substitute for raw logs. Full independent reproduction of the revised manuscript remains dependent on completing that release.
 
-| Config | Best val loss | Seeds | Std |
-|---|---|---|---|
-| FullResidual | 1.502 | 1337 | — |
-| AttnOnly | 1.600 | 1337/42/123 | ±0.015 |
-| FFNOnly | 3.349 | 1337/42/123 | ±0.001 |
-| NoResidual | 3.356 | 1337 | — |
+### Explore the existing code
 
-![Figure 2: 10M asymmetry — originally recorded](Figures/figure2_10M_asymmetry.png)
-
-#### 10M reproduction (forced determinism, new hardware)
-
-| Config | Best val loss | Seeds | Std |
-|---|---|---|---|
-| FullResidual | 1.486 | 1337 | — |
-| AttnOnly | 2.591 | 1337/42/123 | ±0.544 |
-| FFNOnly | 3.350 | 1337/42/123 | ±0.000 |
-| NoResidual | 3.356 | 1337 | — |
-
-FFNOnly reproduces within 0.001. AttnOnly does not — seed 42 (3.354) reached the FFNOnly floor itself.
-
-![Figure 4: 3-seed stability — original vs reproduction](Figures/figure4_3seed_stability.png)
-
-#### 124M — all AttnOnly seeds
-
-| Config | Seed 1337 | Seed 42 | Seed 123 |
-|---|---|---|---|
-| AttnOnly | 4.899 | 7.586 | 5.967 |
-| FFNOnly | 7.666 | — | — |
-| NoResidual | 7.689 | — | — |
-
-Seed 1337 (originally recorded) sits clearly below the floor. Seeds 42 and 123, run subsequently, approach it.
-
-![Figure 5: 124M scale — three AttnOnly seeds](Figures/figure5_124M_scale_verification.png)
-
----
-
-## Mechanistic diagnostics
-
-Both AttnOnly and FFNOnly show identical gradient starvation at Layer 0 — grad norm collapses to 0.000 from step 300 onward in all partial-residual configs. Full Residual sustains ≈0.114 throughout.
-
-Hidden-state norm growth diverges despite identical gradient starvation: AttnOnly 14.0×, FFNOnly 5.4×, FullResidual 1.4×. This was the first signal that the two configs were failing for structurally different reasons.
-
-The proposed explanation — attention's cross-position routing provides a learnable substitute for the missing identity path, while the FFN's pointwise operations cannot — remains a working hypothesis. A direct falsification test (LocalMixer replacing attention) was inconclusive because the AttnOnly baseline did not reproduce on the test hardware.
-
-![Figure 3: Mechanistic diagnostics — gradient starvation, representation drift, training outcome](Figures/figure3_mechanistic_diagnostics.png)
-
----
-
-## The confound (Section 5.1)
-
-An earlier version applied output gain as a runtime multiplier:
-
-```python
-# Wrong — absorbed by AdamW within ~200 steps
-out = sublayer(x) * gain
+```bash
+git clone https://github.com/pratik376/Why-Partial-Residuals-fails.git
+cd Why-Partial-Residuals-fails
 ```
 
-AdamW's per-parameter adaptive rates neutralize the scalar, making g=0.5, g=1.0, and g=2.0 produce near-identical training curves. The corrected version applies gain once at initialization:
+For training, start with the relevant notebook's setup cells and inspect its dataset, output-path, and hardware assumptions before execution. The historical notebooks are not a one-command reproduction of the newer controlled tables.
 
-```python
-# Correct
-block.attn.out.weight.data *= attention_gain
+For the bundled diagnostic package and its unit tests:
+
+```bash
+python -m pip install -e "./residualscope[dev]"
+python -m pytest residualscope/tests -v
 ```
 
-All numbers in this repo use the corrected implementation.
+These tests exercise the diagnostic utilities; passing them does not reproduce the paper's training results. The package's toy example is likewise separate from the 10M/124M experiments.
 
----
+For meaningful reproduction, preserve the code revision, dependency versions, GPU/CUDA environment, dataset split, seeds, initialization, evaluation batches, and training budget alongside each run. Deterministic settings do not establish equivalence across different hardware and software environments.
 
-## Relation to He & Hofmann (2024)
+## Experimental history
 
-He & Hofmann ("Simplifying Transformer Blocks," ICLR 2024) study skipless transformers from the opposite direction — whether architectural modifications can rescue removed skip connections.
+<details>
+<summary>Why the newer conclusions differ from the original README</summary>
 
-- Their attention-skip removal = this paper's FFNOnly. They find rank collapse without modification, consistent with FFNOnly's robust collapse here.
-- Their MLP-skip removal = this paper's AttnOnly. They find significant training speed loss without catastrophic collapse, consistent with the originally recorded AttnOnly partial recovery.
+1. **Initial nanoGPT experiments:** both partial-residual configurations reached a high-loss regime near NoResidual.
+2. **Historical ResidualGPT experiments:** the originally recorded 10M AttnOnly result was approximately `1.600 ± 0.015`.
+3. **Intermediate reproduction:** the historical report was `2.591 ± 0.544`, including a run near the high-loss floor. This statistic is retained as reported, rather than presented as newly revalidated; its SD convention should not be equated with the newer sample SDs.
+4. **Controlled follow-up:** the later 10M and 124M sweeps establish the within-sweep asymmetry summarized above. The cause of the earlier cross-environment discrepancy remains unresolved.
+5. **Communication interventions:** the revised work adds matched-seed LocalMixer and windowed-attention studies in the clean 10M environment.
 
-Key distinction: they test whether modifications can fix skipless training. This paper tests what happens with no modifications, across hardware and seed variation.
+The implementation transition changed validation batching, weight tying, attention implementation, and optimizer/initialization details together. **Fixed validation batches alone were not established as the cause of recovery.**
 
----
+A runtime output-gain experiment was also replaced with weight-level initialization. Runtime scaling changes the forward computation throughout training and does not isolate an initialization-only intervention; the earlier interpretation is retained as a methodological caution.
 
-## Reproducibility
+</details>
 
-**FFNOnly** — reproduces exactly. Run the 10M notebook, expect 3.349 ± 0.001 across seeds on any hardware.
+## Limitations
 
-**AttnOnly** — environment-sensitive. The notebooks include forced determinism:
-
-```python
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-torch.use_deterministic_algorithms(True)
-```
-
-Without these flags, AttnOnly gives different results every run from the same seed — confirmed experimentally: three trials with seed 1337 gave 1.9703, 1.9386, 2.0632. With the flags, results are consistent within an environment but will likely give ~2.2–2.6 rather than the originally recorded 1.600. The gap is documented in Section 8.3 of the paper.
-
----
-
-## Repository structure
-
-```
-WHY-PARTIAL-RESIDUALS-FAIL/
-├── Figures/
-│   ├── figure1_joint_collapse.png
-│   ├── figure2_10M_asymmetry.png
-│   ├── figure3_mechanistic_diagnostics.png
-│   ├── figure4_3seed_stability.png
-│   └── figure5_124M_scale_verification.png
-├── Notebooks/
-│   ├── 10M/
-│   │   ├── 10_M_Residual_GPT.ipynb        ← primary 10M experiment (determinism flags included)
-│   │   ├── 10M_MIXTURE_EXPERIMENT.ipynb   ← LocalMixer falsification test
-│   │   ├── AttnOnly_seed_stability.ipynb  ← 3-seed reproduction investigation
-│   │   └── NanoGPT_10M.ipynb              ← preliminary nanoGPT baseline
-│   └── 124M/
-│       ├── 124M_AttnOnly_Std_Seed_123.ipynb  ← seed 123 additional run
-│       ├── 124M_AttnOnly_std_seed42.ipynb    ← seed 42 additional run
-│       ├── NanoGPT_124M.ipynb                ← preliminary nanoGPT baseline
-│       └── Residual_124M__GPT.ipynb          ← primary 124M experiment
-├── Paper/
-│   └── why_partial_residuals_fail_FINAL_v14.docx
-├── Results/
-│   ├── residual_results_10M.json            ← nanoGPT 10M raw results
-│   ├── residual_results_124M.json           ← nanoGPT 124M raw results
-│   ├── results_best_and_final.csv           ← ResidualGPT 10M verified results
-│   └── all_experiment_summaries.csv         ← ResidualGPT 124M summaries
-├── residualscope/
-│   ├── residualscope/
-│   │   ├── __init__.py
-│   │   ├── core.py
-│   │   ├── compare.py
-│   │   └── plots.py
-│   ├── examples/
-│   │   └── attnonly_ffnonly_demo.py
-│   └── tests/
-│       └── test_core.py
-├── CITATION.cff
-├── LICENSE
-├── pyproject.toml
-├── README.md
-└── requirements.txt
-```
-
----
-
-## Hardware
-
-| Experiment | GPU | VRAM | Approx time |
-|---|---|---|---|
-| 10M ResidualGPT (3 seeds × 4 configs) | A100 40GB | 40GB | ~2 hours |
-| 124M ResidualGPT (seed 1337, 4 configs) | A100 40GB | 40GB | ~10–15 hours per config |
-| 124M AttnOnly additional seeds (42, 123) | A100 40GB | 40GB | ~7 hours per seed |
-
----
+- Results describe finite training budgets and the tested Pre-LN GPT-style architectures, not all transformers or asymptotic convergence.
+- The communication study is limited to 10M TinyShakespeare models; its mechanism has not been established at 124M.
+- Single-run anchors do not establish seed variability or statistical equivalence to a multi-seed configuration.
+- Small seed counts and descriptive SDs do not establish distribution tails or formal statistical significance.
+- The lowest tested mean at `k = 4` does not establish a universally optimal attention window.
+- The implementation changes were bundled, and the earlier reproduction discrepancy remains unresolved.
+- Public release completeness and independent reproduction remain separate from manuscript consistency.
 
 ## Citation
 
 ```bibtex
-@misc{patel2026partial,
-  title={A Reproducibility Study of Partial Residual Ablations: A Robust FFN-Skip
-         Collapse, an Unresolved Attention-Skip Recovery Effect, and a Confound
-         Caught Along the Way},
-  author={Patel, Pratik},
-  year={2026},
-  note={Independent Research Project, Arizona State University},
-  url={https://github.com/pratik376/why-partial-residuals-fail}
+@misc{babariya2026partialresiduals,
+  title         = {A Reproducibility Study of Partial Residual Ablations in Pre-LN Transformers},
+  author        = {Babariya, Pratik Kumar},
+  year          = {2026},
+  eprint        = {2608.14689},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2608.14689}
 }
 ```
 
----
-
-## Honest summary
-
-FFNOnly collapse is real, robust, and reproducible. AttnOnly recovery was observed, could not be reliably reproduced, and the gap remains unresolved. The confound catch (Section 5.1) and the non-determinism investigation (Section 8.3) are the most practically useful parts of this repo for anyone running similar transformer ablation experiments.
+For a reproduction report, please [open an issue](https://github.com/pratik376/Why-Partial-Residuals-fails/issues) with the code revision, environment, configuration, seed, and relevant logs. Reports that challenge or narrow the conclusions are welcome.

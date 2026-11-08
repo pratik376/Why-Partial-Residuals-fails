@@ -1,0 +1,11 @@
+condition,window_k,accessible_context,n,mean_best_val_loss,sample_std,min_best_val_loss,max_best_val_loss,evidence_status,notes
+LocalMixerOnly,,no cross-position communication,3,2.490527,0.000369,2.490254,2.490947,3-seed replicated,Parameter-matched position-wise LocalMixer
+DiagonalOnly,0,self only,3,2.490865,0.000849,2.490095,2.491776,3-seed replicated,k=0; no cross-position communication
+Window1,1,self + 1 previous,3,1.569693,0.006865,1.562058,1.575357,3-seed replicated,Central k=0 to k=1 boundary
+Window2,2,self + 2 previous,1,1.535775,,1.535775,1.535775,single-seed exploratory,Seed 1337 only; not a replicated estimate
+Window3,3,self + 3 previous,3,1.524018,0.005687,1.517451,1.527308,3-seed replicated,
+Window4,4,self + 4 previous,3,1.517060,0.006029,1.510614,1.522560,3-seed replicated,Lowest tested replicated mean
+Window6,6,self + 6 previous,3,1.522414,0.002792,1.520637,1.525632,3-seed replicated,
+Window8,8,self + 8 previous,3,1.529392,0.009371,1.521617,1.539797,3-seed replicated,Notebook-reported summary statistic
+Window16,16,self + 16 previous,3,1.532139,0.007022,1.524254,1.537717,3-seed replicated,
+Window64,64,self + 64 previous,3,1.562607,0.008161,1.555237,1.571378,3-seed replicated,
